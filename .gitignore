@@ -1,0 +1,8 @@
+/bin/
+/database/
+/data/
+/grafana_storage/
+/minio/data/
+.idea/
+.local.env
+.env

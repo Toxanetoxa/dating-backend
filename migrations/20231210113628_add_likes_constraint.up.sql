@@ -1,0 +1,1 @@
+ALTER TABLE user_like ADD CONSTRAINT duplicate_check unique (from_user_id, to_user_id);

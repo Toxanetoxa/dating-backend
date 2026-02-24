@@ -1,0 +1,1 @@
+ALTER TABLE user_like DROP CONSTRAINT if exists duplicate_check

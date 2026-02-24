@@ -1,0 +1,21 @@
+- request:
+    path: /oauth2/user_info
+    method: POST
+  response:
+    status: 200
+    headers:
+      Content-Type: application/json
+    body: >
+      {
+          "user": {
+              "user_id": "1234678",
+              "first_name": "Тестер",
+              "last_name": "Тестеров",
+              "phone": "79001002030",
+              "avatar": "",
+              "email": "",
+              "sex": 2,
+              "verified": false,
+              "birthday": "29.07.1999"
+          }
+      }

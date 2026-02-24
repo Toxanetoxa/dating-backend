@@ -1,0 +1,1804 @@
+openapi: 3.0.1
+info:
+  title: dating server API
+  description: Описание методов API сервера мобильного приложения
+  version: 0.24.6
+servers:
+  - url: https://dev.dating.eagledev.ru/api/v1
+  - url: https://prod.dating.eagledev.ru/api/v1
+  - url: http://localhost:8032/api/v1/
+
+paths:
+  /:
+    get:
+      summary: Hello endpoint
+      description: test
+      responses:
+        "200":
+          description: OK
+          content: { }
+  /auth/request-code:
+    post:
+      tags:
+        - Авторизация
+      summary: Запрос кода
+      description: Запрос одноразового кода для входа или регистрации
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - email
+                - hash
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: email
+                  example: mail@example.com
+                hash:
+                  type: string
+                  description: секретный хэш для защиты от спама sha256(email+соль)
+                  example: 123abc
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                required:
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех операции
+                    example: true
+        "400":
+          description: некорректный формат запроса/ошибка в теле запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "429":
+          description: повторный запрос, код уже был отправлен (code already sent)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: server error
+          content: { }
+      x-codegen-request-body-name: data
+  /auth/login:
+    post:
+      tags:
+        - Авторизация
+      summary: Вход или регистрация
+      description: "Вход в систему, если пользователя не существовало, то он будет\
+        \ сразу создан"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        "200":
+          description: успешная авторизация
+          content:
+            application/json:
+              schema:
+                required:
+                  - data
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: request success
+                    example: true
+                  data:
+                    required:
+                      - expire
+                      - isNewUser
+                      - refreshToken
+                      - token
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        description: JWT-токен для авторизации запросов
+                        example: string-jwt-token
+                      refreshToken:
+                        type: string
+                        description: рефреш-токен для обновления JWT-токена
+                        example: test-refresh-token
+                      expire:
+                        type: integer
+                        description: время жизни токена в секундах
+                        example: 3600
+                      isNewUser:
+                        type: boolean
+                        description: статус пользователя, новый или нет
+                        example: true
+        "400":
+          description: некорректный формат запроса/ошибка в теле запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "401":
+          description: неверный логин или пароль
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-codegen-request-body-name: data
+  /auth/refresh-token:
+    post:
+      tags:
+        - Авторизация
+      summary: Обновление токена
+      description: получение нового токена с помощью рефреш-токена
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                required:
+                  - data
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: request success
+                    example: true
+                  data:
+                    required:
+                      - expire
+                      - refreshToken
+                      - token
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        description: JWT-токен для авторизации запросов
+                        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjh9.Us_MSJotZOGcunjSAy0_CT-pt3asJw-8d1srPOYRSlk
+                      refreshToken:
+                        type: string
+                        description: рефреш-токен для обновления JWT-токена
+                        example: test-refresh-token
+                      expire:
+                        type: integer
+                        description: время жизни токена в секундах
+                        example: 3600
+        "400":
+          description: некорректный формат запроса/ошибка в теле запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "403":
+          description: невалидный рефреш-токен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-codegen-request-body-name: data
+
+  /auth/vk:
+    post:
+      tags:
+        - Авторизация
+      summary: вход через ВК
+      description: вход через ВК
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - accessToken
+              properties:
+                accessToken:
+                  type: string
+                  description: токен, полученный после авторизации чреез VK ID
+        required: true
+      responses:
+        200:
+          description: OK - успешная авторизация, вернется токен и рефреш токен
+          content:
+            application/json:
+              schema:
+                required:
+                  - data
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: request success
+                    example: true
+                  data:
+                    required:
+                      - expire
+                      - refreshToken
+                      - token
+                      - isNewUser
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        description: JWT-токен для авторизации запросов
+                        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjh9.Us_MSJotZOGcunjSAy0_CT-pt3asJw-8d1srPOYRSlk
+                      refreshToken:
+                        type: string
+                        description: рефреш-токен для обновления JWT-токена
+                        example: test-refresh-token
+                      expire:
+                        type: integer
+                        description: время жизни токена в секундах
+                        example: 3600
+                      isNewUser:
+                        type: boolean
+                        description: статус пользователя, новый или нет
+                        example: true
+        400:
+          description: todo
+        500:
+          description: internal server error
+
+  /profile/my:
+    get:
+      tags:
+        - Профиль пользователя
+      summary: Мой профиль
+      security:
+        - bearerAuth: [ ]
+      description: Получение данных своего профиля
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                required:
+                  - data
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: статус запроса
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/UserProfile'
+        "403":
+          description: Ошибка доступа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: server error
+          content: { }
+    post:
+      tags:
+        - Профиль пользователя
+      summary: Обновить профиль
+      security:
+        - bearerAuth: [ ]
+      description: Обновление данных профиля пользователя
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - birthday
+                - name
+                - sex
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Имя
+                  example: Боб
+                sex:
+                  type: string
+                  description: enum пол пользователя (male\female\undefined)
+                  example: male
+                birthday:
+                  type: string
+                  description: дата рождения в формате 2006-02-01
+                  example: 1995-10-20
+                city:
+                  type: string
+                  description: Город
+                  example: Кисловодск
+                about:
+                  type: string
+                  description: О себе
+                  example: ем только куриный суп
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                required:
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: статус запроса
+                    example: true
+        "400":
+          description: ошибка в теле запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "403":
+          description: Ошибка доступа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: server error
+          content: { }
+      x-codegen-request-body-name: data
+    delete:
+      tags:
+        - Профиль пользователя
+      summary: Удалить аккаунт
+      security:
+        - bearerAuth: [ ]
+      description: Удаление своего акканута
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                required:
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+        "500":
+          description: server error
+          content: { }
+  /profile/my/photos:
+    get:
+      tags:
+        - Профиль пользователя
+        - Фото
+      summary: Фотографии пользователя
+      security:
+        - bearerAuth: [ ]
+      description: Получение списка своих фото
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                required:
+                  - data
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserPhoto'
+        "500":
+          description: server error
+          content: { }
+    post:
+      tags:
+        - Профиль пользователя
+        - Фото
+      summary: Загрузить фото
+      security:
+        - bearerAuth: [ ]
+      description: Загрузка нового фото пользователя
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                photo:
+                  type: string
+                  format: binary
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                required:
+                  - data
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+                  data:
+                    required:
+                      - ID
+                      - URL
+                    type: object
+                    properties:
+                      ID:
+                        type: string
+                        description: uuid загруженной фотографии
+                        example: string
+                      URL:
+                        type: string
+                        description: ссылка на фото
+                        example: path/pic.jpg
+        "400":
+          description: ошибка в теле запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "401":
+          description: ошибка доступа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "413":
+          description: Файл слишком большой
+          content: { }
+        "500":
+          description: server error
+          content: { }
+  /profile/my/photos/{photoId}:
+    delete:
+      tags:
+        - Профиль пользователя
+        - Фото
+      summary: Удалить фото
+      security:
+        - bearerAuth: [ ]
+      description: Удаление фото пользователя по id фотографии
+      parameters:
+        - name: photoId
+          in: path
+          description: UUID фотографии
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                required:
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+        "500":
+          description: server error
+          content: { }
+  /profile/my/photos/{photo_id}/set-main:
+    get:
+      tags:
+        - Профиль пользователя
+        - Фото
+      summary: Установить фото как основное
+      security:
+        - bearerAuth: [ ]
+      description: устанавливает данную фотографию как основную (аватарка)
+      parameters:
+        - name: photoId
+          in: path
+          description: UUID фотографии
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                required:
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+        "500":
+          description: server error
+          content: { }
+  /profile/my/geo:
+    post:
+      tags:
+        - Профиль пользователя
+      summary: Обновить геолокацию
+      security:
+        - bearerAuth: [ ]
+      description: Обновление текущей геолокации пользователя на сервере
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - lat
+                - long
+              type: object
+              properties:
+                lat:
+                  type: number
+                  description: latitude
+                  example: 13.361389
+                long:
+                  type: number
+                  description: longitude
+                  example: 38.115556
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                required:
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+        "500":
+          description: server error
+          content: { }
+      x-codegen-request-body-name: data
+  /profile/{id}:
+    get:
+      tags:
+        - Пользователи
+      summary: получение пользователя по uuid
+      security:
+        - bearerAuth: [ ]
+      description: "получение профиля пользовател по uuid. можно смотреть профили\
+        \ только тех, с кем есть мэтч"
+      parameters:
+        - name: id
+          in: path
+          description: UUID пользователя
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                required:
+                  - data
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/UserProfile'
+        "403":
+          description: Нет доступа для просмотра профиля
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: server error
+          content: { }
+  /profile/logout:
+    post:
+      tags:
+        - Профиль пользователя
+      summary: Выйти с устройства (удалить сессию)
+      security:
+        - bearerAuth: [ ]
+      description: Удаление сессии и токенов для текущей сессии пользователя
+      responses:
+        "200":
+          description: "OK, успешный выход"
+          content:
+            application/json:
+              schema:
+                required:
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+        "401":
+          description: ошибка доступа
+          content: { }
+        "500":
+          description: server error
+          content: { }
+  /profile/set-device-id:
+    post:
+      tags:
+        - Профиль пользователя
+      summary: Сохранить/обновить device ID
+      security:
+        - bearerAuth: [ ]
+      description: добавляет или обновляет device id для текущей сессии авторизованного
+        пользователя
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - deviceID
+              type: object
+              properties:
+                deviceID:
+                  type: string
+                  description: device ID
+                  example: abcd123456
+        required: true
+      responses:
+        "200":
+          description: "OK, device ID сохранён"
+          content:
+            application/json:
+              schema:
+                required:
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+        "500":
+          description: server error
+          content: { }
+      x-codegen-request-body-name: data
+  /like:
+    get:
+      tags:
+        - Лайки
+      summary: Список лайков
+      security:
+        - bearerAuth: [ ]
+      description: "список пользователей, которые поставили лайк. Для экрана Вы по\
+        нравились"
+      responses:
+        "200":
+          description: "OK, массив профилей"
+          content:
+            application/json:
+              schema:
+                required:
+                  - data
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Couple'
+        "500":
+          description: server error
+          content: { }
+  /match:
+    get:
+      tags:
+        - Лайки
+      summary: Список мэтчей
+      security:
+        - bearerAuth: [ ]
+      description: "список пользователей с взаимными лайками, с которыми не начан\
+        \ чат"
+      responses:
+        "200":
+          description: массив пользователей
+          content:
+            application/json:
+              schema:
+                required:
+                  - data
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Match'
+        "500":
+          description: server error
+          content: { }
+  /find:
+    post:
+      tags:
+        - Поиск пары
+      summary: Поиск пар
+      security:
+        - bearerAuth: [ ]
+      description: запрос на получение пар с учетом фильтра и лимита кол-ва
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - filter
+                - limit
+              type: object
+              properties:
+                filter:
+                  type: object
+                  properties:
+                    sex:
+                      type: string
+                      description: enum пол (male\female\any)
+                      example: male
+                    radius:
+                      type: integer
+                      description: радиус поиска по геолокации (в километрах). 0 -
+                        отключение фильтра.
+                      example: 100
+                    ageFrom:
+                      type: integer
+                      description: возраст От
+                      example: 18
+                    ageTo:
+                      type: integer
+                      description: возраст До
+                      example: 25
+                  description: фильтры для поиска пар
+                limit:
+                  type: integer
+                  description: кол-во пар в ответе
+                  example: 10
+        required: true
+      responses:
+        "200":
+          description: "OK, массив Пар"
+          content:
+            application/json:
+              schema:
+                required:
+                  - data
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Couple'
+        "403":
+          description: 1017 geo location not set
+          content:
+            application/json:
+              schema:
+                required:
+                  - error
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: false
+                  error:
+                    required:
+                      - code
+                      - message
+                    type: object
+                    properties:
+                      code:
+                        type: integer
+                        description: code
+                        example: 1017
+                      message:
+                        type: string
+                        description: message
+                        example: user geolocation is not set
+        "500":
+          description: server error
+          content: { }
+      x-codegen-request-body-name: data
+  /find/like:
+    post:
+      tags:
+        - Поиск пары
+      summary: Поставить лайк
+      security:
+        - bearerAuth: [ ]
+      description: отправка лайка (по uuid Пользователя)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - userID
+              type: object
+              properties:
+                userID:
+                  type: string
+                  description: uuid Пользователя (которому поставить лайк)
+                  example: 6a7485ca-2020-470d-b0b5-04f3ff19f12f
+        required: true
+      responses:
+        "200":
+          description: "OK, лайк поставлен"
+          content:
+            application/json:
+              schema:
+                required:
+                  - data
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+                  data:
+                    required:
+                      - match
+                    type: object
+                    properties:
+                      match:
+                        type: boolean
+                        description: совпадение лайков
+                        example: false
+                      matchID:
+                        type: string
+                        description: "опциональное поле. если math true, вернётся\
+                          \ uuid мэтча"
+                        example: uuid
+        "500":
+          description: server error
+          content: { }
+      x-codegen-request-body-name: data
+  /find/dislike:
+    post:
+      tags:
+        - Поиск пары
+      summary: Поставить дизлайк
+      security:
+        - bearerAuth: [ ]
+      description: отправка дизайлка (по uuid Пользователя)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - userID
+              type: object
+              properties:
+                userID:
+                  type: string
+                  description: uuid Пользователя (которому поставить дизлайк)
+                  example: 6a7485ca-2020-470d-b0b5-04f3ff19f12f
+        required: true
+      responses:
+        "200":
+          description: "OK, дизлайк поставлен"
+          content:
+            application/json:
+              schema:
+                required:
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+        "500":
+          description: server error
+          content: { }
+      x-codegen-request-body-name: data
+  /ws:
+    get:
+      tags:
+        - WebSocket
+      summary: Установить ws соединение
+      description: todo
+      responses:
+        "101":
+          description: OK Upgrade
+          content: { }
+        "500":
+          description: server error
+          content: { }
+  /chat:
+    get:
+      tags:
+        - Чат
+      summary: Список чатов
+      description: todo
+      security:
+        - bearerAuth: [ ]
+      responses:
+        "200":
+          description: список мэтчей с открытыми чатам
+          content:
+            application/json:
+              schema:
+                required:
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Chat'
+        "500":
+          description: server error
+          content: { }
+  /chat/messages:
+    post:
+      tags:
+        - Чат
+      summary: Список сообщений в чате
+      description: todo
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - limit
+                - matchID
+              type: object
+              properties:
+                matchID:
+                  type: string
+                  description: match (chat) uuid
+                limit:
+                  type: integer
+                offset:
+                  type: integer
+        required: true
+      responses:
+        "200":
+          description: массив сообщений
+          content:
+            application/json:
+              schema:
+                required:
+                  - data
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+        "500":
+          description: server error
+          content: { }
+      x-codegen-request-body-name: data
+  /chat/send-message:
+    post:
+      tags:
+        - Чат
+      summary: Отправить сообщение в чат
+      security:
+        - bearerAuth: [ ]
+      description: Отправить сообщение в чат мэтча
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - matchID
+                - text
+              type: object
+              properties:
+                matchID:
+                  type: string
+                  description: "match (chat) uuid"
+                text:
+                  type: string
+                  description: "текст сообщения"
+        required: true
+      responses:
+        200:
+          description: OK, сообщение отправлено
+          content:
+            application/json:
+              schema:
+                required:
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+        404:
+          description: Несуществующий чат\мэтч
+        400:
+          description: неверный запрос
+        403:
+          description: Нет доступа
+        500:
+          description: server error
+
+  /find/clear-likes:
+    get:
+      tags:
+        - Debug
+      summary: Удалить свои лайки\дизлайки
+      security:
+        - bearerAuth: [ ]
+      description: "Очистит лайки и дизлайки, которые ставил пользователь. нужно д\
+        ля отладки и тестов. Работает только для авторизованнх пользователей"
+      responses:
+        "200":
+          description: "OK, удалено"
+          content:
+            application/json:
+              schema:
+                required:
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: успех запроса
+                    example: true
+        "500":
+          description: server error
+          content: { }
+  /health:
+    get:
+      tags:
+        - Technical
+      summary: Health check
+      description: проверка здоровья сервиса
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alive:
+                    type: boolean
+                    description: состояние здоровья сервиса
+                    example: true
+        "500":
+          description: server error
+          content: { }
+  /metrics:
+    get:
+      tags:
+        - Technical
+      summary: Prometheus metrics
+      description: возвращает стандартные метрики Prometheus
+      responses:
+        "200":
+          description: OK
+          content: { }
+        "500":
+          description: server error
+          content: { }
+  /admin/auth:
+    post:
+      tags:
+        - Панель управления
+      summary: Вход или регистрация
+      description: "Авторизация админа"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLoginRequest'
+        required: true
+      responses:
+        "200":
+          description: успешная авторизация
+          content:
+            application/json:
+              schema:
+                required:
+                  - data
+                  - success
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: request success
+                    example: true
+                  data:
+                    required:
+                      - token
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        description: JWT-токен для авторизации запросов
+                        example: string-jwt-token
+
+        "400":
+          description: некорректный формат запроса/ошибка в теле запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "401":
+          description: неверный логин или пароль
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-codegen-request-body-name: data
+  /admin/dashboard:
+    get:
+      tags:
+        - Панель управления
+      security:
+        - bearerAuth: [ ]
+      summary: Статистика пользователей
+      description: возвращает статистику пользователей
+      responses:
+        "200":
+          description: ОК
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - success
+                  - sexStats
+                properties:
+                  success:
+                    type: boolean
+                    description: request success
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/DashBoard'
+        "500":
+          description: server error
+          content: { }
+  /admin/users:
+    get:
+      tags:
+        - Панель управления
+      summary: Список пользователей
+      security:
+        - bearerAuth: [ ]
+      description: возвращает список пользователей
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: состояние здоровья сервиса
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UsersInfo'
+        "500":
+          description: server error
+          content: { }
+  /admin/user/{id}:
+    get:
+      tags:
+        - Панель управления
+      summary: Информация о пользователе
+      security:
+        - bearerAuth: [ ]
+      description: возвращает информацию о пользователе
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: состояние здоровья сервиса
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserInfo'
+        "500":
+          description: server error
+          content: { }
+  /products/boost:
+    get:
+      tags:
+        - Покупки
+      summary: Информация о boost
+      description: информация о цене и тд
+      responses:
+        "200":
+          description: ОК
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                properties:
+                  success:
+                    type: boolean
+                    description: request success
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/BoostInfo'
+  /products/buy-boost:
+    get:
+      tags:
+        - Покупки
+      summary: Купить boost
+      description: запрос на покупку boost, вернёт ссылку для оплаты
+      responses:
+        "200":
+          description: ОК
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                properties:
+                  success:
+                    type: boolean
+                    description: request success
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/BuyBoost'
+  /products/my:
+    get:
+      tags:
+        - Покупки
+      summary: список покупок
+      description: список активированных услуг у пользователя
+      responses:
+        "200":
+          description: ОК
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                properties:
+                  success:
+                    type: boolean
+                    description: request success
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MyProduct'
+
+components:
+  schemas:
+    LoginRequest:
+      required:
+        - code
+        - email
+      type: object
+      properties:
+        email:
+          type: string
+          description: email
+          example: mail@example.com
+        code:
+          type: string
+          description: однаразовый код
+          example: "1234"
+    AdminLoginRequest:
+      required:
+        - password
+        - login
+      type: object
+      properties:
+        login:
+          type: string
+          description: login
+          example: clique
+        password:
+          type: string
+          description: password
+          example: "123"
+    UsersInfo:
+      required:
+        - ID
+        - name
+        - phone
+        - status
+        - photo
+      type: object
+      properties:
+        ID:
+          type: string
+          description: uuid сообщения
+          example: uuid
+        name:
+          type: string
+          description: "name пользователя"
+          example: name
+        phone:
+          type: string
+          description: телефон(временно почта)
+          example: "example@mail.ru"
+        status:
+          type: string
+          description: статус пользователя
+          example: "active"
+        photo:
+          type: array
+          description: фотография
+          example: "73href72631f"
+    DashBoardSex:
+      required:
+        - sexStats
+        - count
+        - male
+        - female
+        - undefined
+      type: object
+      properties:
+        male:
+          type: integer
+          description: количество
+          example: 1
+        female:
+          type: integer
+          description: количество
+          example: 1
+        undefined:
+          type: integer
+          description: количество
+          example: 1
+    UserInfo:
+      required:
+        - ID
+        - name
+        - phone
+        - status
+        - photo
+        - updatedAt
+        - createdAt
+        - birthday
+        - sex
+        - about
+        - geolocation
+      type: object
+      properties:
+        ID:
+          type: string
+          description: uuid сообщения
+          example: uuid
+        name:
+          type: string
+          description: "name пользователя"
+          example: Ivan
+        phone:
+          type: string
+          description: телефон(временно почта)
+          example: "example@mail.ru"
+        status:
+          type: string
+          description: статус пользователя
+          example: "active"
+        photo:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserPhoto'
+        updatedAt:
+          type: string
+          description: Дата обновления в формате YYYY-MM-DD-THH:MM:SS
+          example: "2024-03-27T00:00:00Z"
+        createdAt:
+          type: string
+          description: Дата создания в формате YYYY-MM-DD-THH:MM:SS
+          example: "2024-03-27T00:00:00Z"
+        birthday:
+          type: string
+          description: Дата рождения в формате YYYY-MM-DD
+          example: 2000-06-29
+        sex:
+          type: string
+          description: пол
+          example: "male"
+        about:
+          type: string
+          description: обо мне
+          example: "ем куриный суп"
+        geolocation:
+          $ref: '#/components/schemas/Geolocation'
+    Geolocation:
+      required:
+        - lng
+        - lat
+      type: object
+      properties:
+        lng:
+          type: number
+          description: долгота
+          example: 1
+        lat:
+          type: number
+          description: широта
+          example: 1
+    DashBoard:
+      required:
+        - totalUsers
+        - usersByDay
+        - usersByWeek
+        - usersActive
+        - usersNew
+        - usersInActive
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+          description: Количество пользователей всего
+          example: 1
+        usersByDay:
+          type: integer
+          description: Количество пользователей зарегистрированных за день
+          example: 1
+        usersByWeek:
+          type: integer
+          description: Количество пользователей зарегистрированных за неделю
+          example: 1
+        usersActive:
+          type: integer
+          description: Количество активных пользователей
+          example: 1
+        usersNew:
+          type: integer
+          description: Количество новых пользователей
+          example: 1
+        usersInActive:
+          type: integer
+          description: Количество неактивных пользователей
+          example: 1
+        sexStats:
+          $ref: '#/components/schemas/DashBoardSex'
+    RefreshTokenRequest:
+      required:
+        - refreshToken
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          description: refresh-токен
+          example: test-refresh-token
+    UserUpdateRequest:
+      required:
+        - birthday
+        - firstName
+        - sex
+      type: object
+      properties:
+        email:
+          type: string
+          description: E-mail адрес
+          example: user@example.com
+        firstName:
+          type: string
+          description: Имя
+          example: Вова
+        birthday:
+          type: string
+          description: Дата рождения в формате YYYY-MM-DD
+          example: 2000-06-29
+        sex:
+          type: string
+          description: Пол в формате male/female/undefined
+          example: male
+        city:
+          type: string
+          description: Город
+          example: Москва
+        about:
+          type: string
+          description: Краткое описание о себе
+          example: хочу на море
+    ErrorResponse:
+      required:
+        - error
+        - success
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: request success
+          example: false
+        error:
+          required:
+            - code
+            - message
+          type: object
+          properties:
+            code:
+              type: integer
+              description: internal error code
+              example: 1001
+            message:
+              type: string
+              description: error text
+              example: example error
+    UserProfile:
+      required:
+        - ID
+      type: object
+      properties:
+        ID:
+          type: string
+          description: uuid пользователя
+        name:
+          type: string
+          description: имя
+        sex:
+          type: string
+          description: пол
+        birthday:
+          type: string
+          description: дата рождения
+        city:
+          type: string
+          description: город
+        about:
+          type: string
+          description: о себе
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserPhoto'
+        distance:
+          type: integer
+          description: расстояние до пользователя в километрах
+          example: 4389
+    UserPhoto:
+      required:
+        - ID
+        - URL
+        - isMain
+      type: object
+      properties:
+        ID:
+          type: string
+          description: uuid фотографии
+          example: 6a7485ca-2020-470d-b0b5-04f3ff19f12f
+        URL:
+          type: string
+          description: URL адрес картинки
+          example: https://example.example/example.jpg
+        isMain:
+          type: boolean
+          description: флаг основное фото профиля
+          example: false
+        createdAt:
+          type: string
+          description: дата добавления
+    Couple:
+      required:
+        - distance
+        - profile
+      type: object
+      properties:
+        distance:
+          type: integer
+          description: расстояние до пары (в километрах)
+          example: 5
+        profile:
+          $ref: '#/components/schemas/UserProfile'
+    Message:
+      required:
+        - createdAt
+        - delivered
+        - id
+        - isRead
+        - text
+        - userId
+      type: object
+      properties:
+        id:
+          type: string
+          description: uuid сообщения
+          example: uuid
+        userId:
+          type: string
+          description: "uuid пользователя, отправившего сообщение"
+          example: uuid
+        text:
+          type: string
+          description: текст сообщения
+          example: "hello, world"
+        isRead:
+          type: boolean
+          description: статус просмотра сообщения
+          example: true
+        delivered:
+          type: boolean
+          description: статус доставки
+          example: true
+        createdAt:
+          type: integer
+          description: время создания сообщения
+          example: 123456778
+    Chat:
+      required:
+        - ID
+        - lastMessage
+        - profile
+      type: object
+      properties:
+        ID:
+          type: string
+          description: match uuid
+          example: uuid
+        profile:
+          $ref: '#/components/schemas/UserProfile'
+        lastMessage:
+          $ref: '#/components/schemas/Message'
+        createdAt:
+          type: string
+          description: дата создания мэтча
+    Match:
+      required:
+        - ID
+        - createdAt
+        - profile
+      type: object
+      properties:
+        ID:
+          type: string
+          description: match uuid
+          example: 31125d0c-a62d-4f2a-9fb4-b830e19b673f
+        profile:
+          $ref: '#/components/schemas/UserProfile'
+        createdAt:
+          type: integer
+          description: дата создания мэтча
+    BoostInfo:
+      required:
+        - ID
+        - price
+        - currency
+        - validity
+        - name
+      properties:
+        ID:
+          type: integer
+          description: "ID продукта/услуги"
+          example: 1
+        price:
+          type: string
+          description: "цена"
+          example: "29"
+        oldPrice:
+          type: string
+          description: "старая цена (для скидки)"
+          example: "99.99"
+        currency:
+          type: string
+          description: "валюта для цены (ISO 4217)"
+          example: "RUB"
+        discount:
+          type: string
+          description: "размер скидки в процентах"
+          example: "70"
+        validity:
+          type: integer
+          description: "срок действия услуги в секундах"
+          example: 3600
+        name:
+          type: string
+          description: "название услуги (для внутренних целей)"
+          example: "boost"
+    BuyBoost:
+      required:
+        - link
+        - expired
+      properties:
+        link:
+          type: string
+          description: "ссылка для оплаты"
+          example: https://yoomoney.ru/checkout/payments/v2/contract?orderId=2db236e8
+        expired:
+          type: string
+          description: "время действия ссылки на оплату"
+          example: "2024-04-17T22:39:44.5246141+03:00"
+    MyProduct:
+      required:
+        - productID
+        - expire
+      properties:
+        productID:
+          type: integer
+          description: ID продукта/услуги
+          example: 1
+        expire:
+          type: string
+          description: дата, до которой действует услуга/продукт
+          example:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
